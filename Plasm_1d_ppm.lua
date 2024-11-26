@@ -11,13 +11,9 @@ local Config =
   {
     ImageWidth = tonumber(arg[1]) or 60,
     ImageHeight = tonumber(arg[2]) or 30,
-    RandomSeed = (math.randomseed()),
+    RandomSeed = tonumber(arg[3]) or math.randomseed(),
     OutputFileName = 'Plasm_1d.ppm',
   }
-
-if arg[3] then
-  Config.RandomSeed = tonumber(arg[3])
-end
 
 --[[ Dev
 package.path = package.path .. ';../../?.lua'
