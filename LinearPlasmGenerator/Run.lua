@@ -1,9 +1,9 @@
 -- Plasm generator wrapper
 
--- Last mod.: 2024-11-26
+-- Last mod.: 2024-11-30
 
 -- Imports:
-local GetGap = request('Internals.GetGap')
+local GetGap = request('!.number.integer.get_gap')
 
 --[[
   Draw "linear plasm" to <self.Image>.

@@ -10,7 +10,7 @@ local Modules = {
   get dependencies list for any module. Which is used to create
   deploys without unused code.
 
-  Price for tracking dependencies  is global table "dependencies"
+  Price for tracking dependencies is global table "dependencies"
   and function "get_require_name".
 
   Lastly, global functions are added for convenience. Such functions
@@ -3009,6 +3009,19 @@ return FitToRange
   2024-11-24
 ]]
 ]=],
+  ['workshop.number.float.get_middle'] = [=[
+-- Return float between two floats
+
+-- Exports:
+return
+  function(Left, Right)
+    return (Left + Right) / 2
+  end
+
+--[[
+  2024-11-30
+]]
+]=],
   ['workshop.number.in_range'] = [=[
 --[[
   Return true if given number in specified range.
@@ -3018,6 +3031,46 @@ return
   function(num, min, max)
     return (num >= min) and (num <= max)
   end
+]=],
+  ['workshop.number.integer.get_gap'] = [=[
+-- Return gap between two integers. (Gap between 4 and 5 is 0.)
+
+--[[
+  We can generalize this function as
+
+  (Left, Right, UnitWidth)
+    return ((Right - Left) - UnitWidth)
+
+  and UnitWidth is 1 for integers and 0 for floats.
+
+  But I just need it for integers.
+]]
+
+return
+  function(Left, Right)
+    return ((Right - Left) - 1)
+  end
+
+--[[
+  2024-09
+]]
+]=],
+  ['workshop.number.integer.get_middle'] = [=[
+-- Return integer in the middle of given two
+
+-- Last mod.: 2024-11-30
+
+local GetMiddle =
+  function(Left, Right)
+    return (Left + Right) // 2
+  end
+
+-- Exports:
+return GetMiddle
+
+--[[
+  2024-11-30
+]]
 ]=],
   ['workshop.number.is_natural'] = [=[
 -- Return true if argument is natural number
@@ -3095,6 +3148,18 @@ return MapNumber
 
 --[[
   2024-11-24
+]]
+]=],
+  ['workshop.number.symmetric_random'] = [=[
+-- Return random value from flat distribution in interval [-1.0, +1.0]
+
+return
+  function()
+    return (math.random() * 2.0 - 1.0)
+  end
+
+--[[
+  2024-09
 ]]
 ]=],
   ['workshop.string.content_attributes'] = [=[

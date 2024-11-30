@@ -1,9 +1,6 @@
 -- 1-D "plasm" gradient generation core
 
--- Last mod.: 2024-11-25
-
--- Imports:
-local GetGap = request('Internals.GetGap')
+-- Last mod.: 2024-11-30
 
 --[[
   Generate "1-D plasm": midway linear interpolation between pixels with
@@ -23,13 +20,11 @@ local GetGap = request('Internals.GetGap')
 ]]
 local MakePlasm =
   function(self, LeftPixel, RightPixel)
-    local Gap = GetGap(LeftPixel.Index, RightPixel.Index)
+    local MidwayPixel = self:CalculateMidwayPixel(LeftPixel, RightPixel)
 
-    if (Gap <= 0) then
+    if not MidwayPixel then
       return
     end
-
-    local MidwayPixel = self:CalculateMidwayPixel(LeftPixel, RightPixel)
 
     self:SetPixel(MidwayPixel)
 

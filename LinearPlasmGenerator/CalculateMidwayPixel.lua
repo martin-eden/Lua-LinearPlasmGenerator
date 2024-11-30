@@ -1,10 +1,12 @@
 -- Calculate midway pixel with noise
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2024-11-30
 
 -- Imports:
 local BaseColor = request('!.concepts.Image.Color.Interface')
-local GetGap = request('Internals.GetGap')
+local GetGap = request('!.number.integer.get_gap')
+local GetMiddleInt = request('!.number.integer.get_middle')
+local GetMiddleFloat = request('!.number.float.get_middle')
 local Clamp = request('!.number.constrain')
 
 --[[
@@ -26,21 +28,25 @@ local Clamp = request('!.number.constrain')
 local CalculateMidwayPixel =
   function(self, LeftPixel, RightPixel)
     local Gap = GetGap(LeftPixel.Index, RightPixel.Index)
-    assert(Gap >= 1)
 
-    -- Distance is normalized gap to make it fit in [0.0, 1.0]
+    assert(Gap >= 0)
+
+    if (Gap == 0) then
+      return
+    end
+
     local Distance = Gap / self.MaxGap
 
-    -- Index of middle pixel
-    local Index = (LeftPixel.Index + RightPixel.Index) // 2
+    local Index = GetMiddleInt(LeftPixel.Index, RightPixel.Index)
 
     -- Calculate color components
     local Color = new(BaseColor)
+
     for Index in ipairs(Color) do
       local Noise = self:MakeDistanceNoise(Distance)
 
       local Value
-      Value = (LeftPixel.Color[Index] + RightPixel.Color[Index]) / 2
+      Value = GetMiddleFloat(LeftPixel.Color[Index], RightPixel.Color[Index])
       Value = Value + Noise
       Value = Clamp(Value, 0.0, 1.0)
 
@@ -58,4 +64,5 @@ return CalculateMidwayPixel
   2024-11-06
   2024-11-18
   2024-11-24
+  2024-11-30
 ]]
