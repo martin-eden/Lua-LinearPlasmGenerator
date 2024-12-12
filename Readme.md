@@ -92,11 +92,30 @@ one site tries to sell. That's even worse than PowerPoint presentations.
 It does not use any OS-specific functions so may run even under Windows!
 
 
+## Bonus stuff
+
+[DisplayPpm][DisplayPpm] - quick script to display `.ppm` in console
+while you're rolling plasm generation.
+
+Example:
+```
+lua Plasm_1d_ppm.lua 160 15; lua DisplayPpm.lua
+```
+![ConsoleSample][ConsoleSample]
+
+That's text terminal guys! (There are fancy ANSI codes extension
+to set colors in RGB.)
+
+Sorry Windows users, I don't think it will work on your system.
+
+
 ## See also
 
 * [RGB stripe console][RgbStripeConsole] originally this code was born there
 * [My other repositories][Repos] (Lua and Arduino C++)
 
+[DisplayPpm]: DisplayPpm.lua
+[ConsoleSample]: BlaBlaImages/ConsoleSample.png
 [SampleImage]: BlaBlaImages/Plasm_1d.png
 [RgbStripeConsole]: https://github.com/martin-eden/Lua-RgbStripeConsole
 [Repos]: https://github.com/martin-eden/contents
