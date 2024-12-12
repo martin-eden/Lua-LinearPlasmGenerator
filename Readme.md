@@ -1,10 +1,10 @@
 ## What
 
-(2024-11)
+(2024-11, 2024-12)
 
 "Plasm" gradient filling for 1-d images.
 
-![Image](Nice%20images/Plasm_1d.png)
+![Image][SampleImage]
 
 Command-line tool to generate image by given width, height and random
 seed.
@@ -97,5 +97,6 @@ It does not use any OS-specific functions so may run even under Windows!
 * [RGB stripe console][RgbStripeConsole] originally this code was born there
 * [My other repositories][Repos] (Lua and Arduino C++)
 
+[SampleImage]: BlaBlaImages/Plasm_1d.png
 [RgbStripeConsole]: https://github.com/martin-eden/Lua-RgbStripeConsole
 [Repos]: https://github.com/martin-eden/contents
