@@ -620,7 +620,7 @@ return
   ['workshop.concepts.Ppm.Compiler_IsToPpm.Run'] = [=[
 -- Convert from .is to .ppm
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2024-12-12
 
 --[[
   Gets list of strings/lists structure. Writes in .ppm format.
@@ -629,13 +629,9 @@ return
 ]]
 local SerializePpm =
   function(self, PpmIs)
-    local Label = self.Constants.FormatLabel
-    local HeaderIs = PpmIs[1]
-    local DataIs = PpmIs[2]
-
-    self:WriteLabel(Label)
-    self:WriteHeader(HeaderIs)
-    self:WriteData(DataIs)
+    self:WriteLabel()
+    self:WriteHeader(PpmIs)
+    self:WriteData(PpmIs)
 
     return true
   end
@@ -647,6 +643,7 @@ return SerializePpm
   2024-11-02
   2024-11-03
   2024-11-25
+  2024-12-12
 ]]
 ]=],
   ['workshop.concepts.Ppm.Compiler_IsToPpm.WriteData'] = [=[
@@ -704,40 +701,46 @@ return
   ['workshop.concepts.Ppm.Compiler_IsToPpm.WriteHeader'] = [=[
 -- Write header to output
 
--- Last mod.: 2024-11-03
+-- Last mod.: 2024-12-12
 
 -- Exports
 return
-  function(self, HeaderIs)
+  function(self, DataIs)
+    local Height = #DataIs
+    local Width = #DataIs[1]
+    local MaxColorValue = self.Constants.MaxColorValue
+
     self:WriteLine(
       string.format(
         self.HeaderFmt,
-        HeaderIs[1],
-        HeaderIs[2],
-        HeaderIs[3]
+        Width,
+        Height,
+        MaxColorValue
       )
     )
   end
 
 --[[
   2024-11-03
+  2024-12-12
 ]]
 ]=],
   ['workshop.concepts.Ppm.Compiler_IsToPpm.WriteLabel'] = [=[
 -- Write label string to output
 
--- Last mod.: 2024-11-02
+-- Last mod.: 2024-12-12
 
 -- Exports:
 return
-  function(self, Label)
+  function(self)
     self:WriteLine(
-      string.format(self.LabelFmt, Label)
+      string.format(self.LabelFmt, self.Constants.FormatLabel)
     )
   end
 
 --[[
   2024-11-02
+  2024-12-12
 ]]
 ]=],
   ['workshop.concepts.Ppm.Compiler_IsToPpm.WriteLine'] = [=[
@@ -759,7 +762,7 @@ return
   ['workshop.concepts.Ppm.Compiler_LuaToIs.CompileColor'] = [=[
 -- Anonymize color to list
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2024-12-12
 
 -- Imports:
 local DenormalizeColor = request('!.concepts.Image.Color.Denormalize')
@@ -769,9 +772,9 @@ return
   function(self, Color)
     DenormalizeColor(Color)
 
-    local RedIs = self:CompileColorComponent(Color.Red)
-    local GreenIs = self:CompileColorComponent(Color.Green)
-    local BlueIs = self:CompileColorComponent(Color.Blue)
+    local RedIs = self:CompileColorComponent(Color[1])
+    local GreenIs = self:CompileColorComponent(Color[2])
+    local BlueIs = self:CompileColorComponent(Color[3])
 
     if not (RedIs and GreenIs and BlueIs) then
       return
@@ -783,6 +786,7 @@ return
 --[[
   2024-11-03
   2024-11-25
+  2021-12-12
 ]]
 ]=],
   ['workshop.concepts.Ppm.Compiler_LuaToIs.CompileColorComponent'] = [=[
@@ -812,36 +816,6 @@ return
 
 --[[
   2024-11-03
-]]
-]=],
-  ['workshop.concepts.Ppm.Compiler_LuaToIs.CompileHeader'] = [=[
--- Emit header anonymous structure
-
--- Last mod.: 2024-11-25
-
--- Exports:
-return
-  function(self, Image)
-    local ImageHeight = #Image
-
-    local ImageWidth = 0
-    if Image[1] then
-      ImageWidth = #Image[1]
-    end
-
-    local WidthIs = string.format(self.DimensionFmt, ImageWidth)
-
-    local HeightIs = string.format(self.DimensionFmt, ImageHeight)
-
-    local MaxValueIs =
-      string.format(self.ColorComponentFmt, self.Constants.MaxColorValue)
-
-    return { WidthIs, HeightIs, MaxValueIs }
-  end
-
---[[
-  2024-11-03
-  2024-11-25
 ]]
 ]=],
   ['workshop.concepts.Ppm.Compiler_LuaToIs.CompileImage'] = [=[
@@ -883,7 +857,7 @@ return
   ['workshop.concepts.Ppm.Compiler_LuaToIs.Interface'] = [=[
 -- Compile named Lua table to anonymous structure (list of strings/lists)
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2024-12-12
 
 -- Exports:
 return
@@ -893,9 +867,6 @@ return
 
     -- [Config]
 
-    -- Dimension (width and height) serialization format
-    DimensionFmt = '%d',
-
     -- Color component serialization format
     ColorComponentFmt = '%03d',
 
@@ -903,9 +874,6 @@ return
 
     -- Format constants
     Constants = request('^.Constants.Interface'),
-
-    -- Compile header
-    CompileHeader = request('CompileHeader'),
 
     -- Compile image data
     CompileImage = request('CompileImage'),
@@ -922,26 +890,20 @@ return
   2024-11-04
   2024-11-06
   2024-11-25
+  2024-12-12
 ]]
 ]=],
   ['workshop.concepts.Ppm.Compiler_LuaToIs.Run'] = [=[
 -- Anonymize parsed .ppm
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2024-12-12
 
 --[[
   Compile Lua table to anonymous structure
 ]]
 local Compile =
   function(self, Image)
-    local HeaderIs = self:CompileHeader(Image)
-    local DataIs = self:CompileImage(Image)
-
-    if not (HeaderIs and DataIs) then
-      return
-    end
-
-    return { HeaderIs, DataIs }
+    return self:CompileImage(Image)
   end
 
 -- Exports:
@@ -950,6 +912,7 @@ return Compile
 --[[
   2024-11-03
   2024-11-06
+  2024-12-12
 ]]
 ]=],
   ['workshop.concepts.Ppm.Constants.Interface'] = [=[
@@ -1155,6 +1118,7 @@ local ParsePixel =
     end
 
     local Color = new(BaseColor, { Red, Green, Blue })
+
     NormalizeColor(Color)
 
     return Color
@@ -1643,7 +1607,7 @@ return Parse
   ['workshop.concepts.Ppm.Save'] = [=[
 -- Save image to stream
 
--- Last mod.: 2024-11-23
+-- Last mod.: 2024-12-12
 
 -- Imports:
 local Compiler_LuaToIs = request('Compiler_LuaToIs.Interface')
@@ -1655,7 +1619,7 @@ return
     local ImageIs = Compiler_LuaToIs:Run(Image)
 
     if not ImageIs then
-      return
+      return false
     end
 
     Compiler_IsToPpm.Output = self.Output
@@ -1663,7 +1627,7 @@ return
     local IsOkay = Compiler_IsToPpm:Run(ImageIs)
 
     if not IsOkay then
-      return
+      return false
     end
 
     return true
@@ -1723,6 +1687,88 @@ return
 --[[
   2024-07-19
   2024-07-24
+]]
+]=],
+  ['workshop.concepts.StreamIo.Input.File'] = [=[
+-- Reads strings from file. Implements [Input]
+
+-- Last mod.: 2024-11-11
+
+local OpenForReading = request('!.file_system.file.OpenForReading')
+local CloseFileFunc = request('!.file_system.file.Close')
+
+-- Contract: Read string from file
+local Read =
+  function(self, NumBytes)
+    assert_integer(NumBytes)
+    assert(NumBytes >= 0)
+
+    local Data = ''
+    local IsComplete = false
+
+    Data = self.FileHandle:read(NumBytes)
+
+    local IsEof = is_nil(Data)
+
+    -- No End-of-File state in [Input]
+    if IsEof then
+      Data = ''
+    end
+
+    IsComplete = (#Data == NumBytes)
+
+    return Data, IsComplete
+  end
+
+-- Intestines: Open file for reading
+local OpenFile =
+  function(self, FileName)
+    local FileHandle = OpenForReading(FileName)
+
+    if is_nil(FileHandle) then
+      return false
+    end
+
+    self.FileHandle = FileHandle
+
+    return true
+  end
+
+-- Intestines: close file
+local CloseFile =
+  function(self)
+    return (CloseFileFunc(self.FileHandle) == true)
+  end
+
+local Interface =
+  {
+    -- [New]
+
+    -- Open file by name
+    Open = OpenFile,
+
+    -- Close file
+    Close = CloseFile,
+
+    -- [Main]: Read bytes
+    Read = Read,
+
+    -- Intestines
+    FileHandle = 0,
+  }
+
+-- Close file at garbage collection
+setmetatable(Interface, { __gc = function(self) self:Close() end } )
+
+-- Exports:
+return Interface
+
+--[[
+  2024-07-19
+  2024-07-24
+  2024-08-05
+  2024-08-09
+  2024-11-11
 ]]
 ]=],
   ['workshop.concepts.StreamIo.Output'] = [=[
@@ -2592,6 +2638,26 @@ return
   2024-08-09
 ]]
 ]=],
+  ['workshop.file_system.file.OpenForReading'] = [=[
+-- Open file for reading
+
+return
+  function(FileName)
+    assert_string(FileName)
+
+    local File = io.open(FileName, 'rb')
+
+    if is_nil(File) then
+      return
+    end
+
+    return File
+  end
+
+--[[
+  2024-08-09
+]]
+]=],
   ['workshop.file_system.file.OpenForWriting'] = [=[
 -- Open file for writing
 
@@ -2951,6 +3017,18 @@ return
     line_with_text:init(self.Indent:GetString())
   end
 ]],
+  ['workshop.number.assert_byte'] = [=[
+--[[
+  Assert that passed value is integer in byte range.
+]]
+
+local is_byte = request('is_byte')
+
+return
+  function(v)
+    assert(is_byte(v))
+  end
+]=],
   ['workshop.number.constrain'] = [=[
 -- Constrain given number between min and max values
 
@@ -3022,6 +3100,18 @@ return
   2024-11-30
 ]]
 ]=],
+  ['workshop.number.float.symmetric_random'] = [=[
+-- Return random value from flat distribution in interval [-1.0, +1.0]
+
+return
+  function()
+    return (math.random() * 2.0 - 1.0)
+  end
+
+--[[
+  2024-09
+]]
+]=],
   ['workshop.number.in_range'] = [=[
 --[[
   Return true if given number in specified range.
@@ -3070,6 +3160,36 @@ return GetMiddle
 
 --[[
   2024-11-30
+]]
+]=],
+  ['workshop.number.is_byte'] = [=[
+-- Check that given argument is integer in byte range
+
+--[[
+  Input
+
+    Value: any - any value
+
+  Output
+
+    Yes: bool - value is integer in byte range
+]]
+
+return
+  function(Value)
+    if not is_integer(Value) then
+      return false
+    end
+
+    -- Masking integer with low byte changes nothing for byte range
+    local Result = (Value == (Value & 0xFF))
+
+    return Result
+  end
+
+--[[
+  2020-08-09
+  2024-09-30
 ]]
 ]=],
   ['workshop.number.is_natural'] = [=[
@@ -3148,18 +3268,6 @@ return MapNumber
 
 --[[
   2024-11-24
-]]
-]=],
-  ['workshop.number.symmetric_random'] = [=[
--- Return random value from flat distribution in interval [-1.0, +1.0]
-
-return
-  function()
-    return (math.random() * 2.0 - 1.0)
-  end
-
---[[
-  2024-09
 ]]
 ]=],
   ['workshop.string.content_attributes'] = [=[
