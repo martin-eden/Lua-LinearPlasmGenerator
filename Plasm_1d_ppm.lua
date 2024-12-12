@@ -3,7 +3,7 @@
 --[[
   Author: Martin Eden
   License: LGPL v3
-  Last mod.: 2024-11-26
+  Last mod.: 2024-12-12
 ]]
 
 -- Config:
@@ -36,13 +36,13 @@ math.randomseed(Config.RandomSeed, Config.RandomSeed)
 
 PlasmGenerator.ImageLength = Config.ImageWidth
 PlasmGenerator.OnRing = true
-PlasmGenerator.Scale = 2.5
+PlasmGenerator.Scale = 2.4
 
 -- Custom [0.0, 1.0] -> [0.0, 1.0] mapping function
 PlasmGenerator.TransformDistance =
   function(self, Distance)
-    return Distance ^ 1.26
-    --[[
+    -- return Distance ^ 1.43
+    -- [[
     local Angle_Deg = Distance * 180 - 90
     local Angle_Rad = math.rad(Angle_Deg)
     return (math.sin(Angle_Rad) + 1) / 2
