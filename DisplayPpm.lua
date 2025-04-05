@@ -2,14 +2,14 @@
 
 --[[
   Author: Martin Eden
-  Last mod.: 2024-12-12
+  Last mod.: 2025-03-31
 ]]
 
---[[ Dev
+-- [[ Dev
 package.path = package.path .. ';' .. '../../?.lua'
 require('workshop.base')
 --]]
-require('workshop')
+-- require('workshop')
 
 local Config =
   {
@@ -39,7 +39,7 @@ local GetCommand_Reset =
     return Command
   end
 
-local PpmImageCodec = request('!.concepts.Ppm.Interface')
+local PpmImageCodec = request('!.concepts.Netpbm.Interface')
 local InputFile = request('!.concepts.StreamIo.Input.File')
 local DenormalizeColor = request('!.concepts.Image.Color.Denormalize')
 
@@ -49,31 +49,44 @@ PpmImageCodec.Input = InputFile
 
 local Image = PpmImageCodec:Load()
 
-local ImageWidth = #Image[1]
-local ImageHeight = #Image
+if not Image then
+  print('Failed to load image.')
+  return
+end
 
-print(ImageWidth .. 'x' .. ImageHeight)
+print(Image.Width .. 'x' .. Image.Height)
 
 -- '─│╭╮╰╯'
 
 io.write(GetCommand_Reset())
 
 io.write('╭')
-for _ = 1, ImageWidth + 2 do
+for _ = 1, Image.Width + 2 do
   io.write('─')
 end
 io.write('╮')
 io.write('\n')
 
-for RowIndex, Row in ipairs(Image) do
+for Row = 1, Image.Height do
   io.write(GetCommand_Reset())
   io.write('│ ')
-  for ColIndex, Column in ipairs(Row) do
-    local Color = Column
+  for Column = 1, Image.Width do
+    local Color = new(Image[Row][Column])
 
     DenormalizeColor(Color)
 
-    local Red, Green, Blue = table.unpack(Color)
+    local Red, Green, Blue
+    do
+      if (#Color == 1) then
+        Red = Color[1]
+        Green = Color[1]
+        Blue = 0-- Color[1]
+      elseif (#Color == 3) then
+        Red = Color[1]
+        Green = Color[2]
+        Blue = Color[3]
+      end
+    end
 
     io.write(GetCommand_SetRgbBackground(Red, Green, Blue))
     io.write(' ')
@@ -84,7 +97,7 @@ for RowIndex, Row in ipairs(Image) do
 end
 
 io.write('╰')
-for _ = 1, ImageWidth + 2 do
+for _ = 1, Image.Width + 2 do
   io.write('─')
 end
 io.write('╯')
@@ -92,4 +105,6 @@ io.write('\n')
 
 --[[
   2024-12-12
+  2025-03-29
+  2025-03-31
 ]]
