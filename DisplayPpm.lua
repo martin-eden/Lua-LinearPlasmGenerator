@@ -2,7 +2,7 @@
 
 --[[
   Author: Martin Eden
-  Last mod.: 2025-03-31
+  Last mod.: 2025-04-06
 ]]
 
 --[[ Dev
@@ -18,27 +18,17 @@ local Config =
     InputFileName = arg[1] or 'Plasm_1d.ppm',
   }
 
-local AssertByte = request('!.number.assert_byte')
-
-local FukenEsc = '\027['
+-- Imports:
+local AnsiTerm = request('!.frontend.AnsiTerm.Interface')
 
 local GetCommand_SetRgbBackground =
   function(RedByte, GreenByte, BlueByte)
-    AssertByte(RedByte)
-    AssertByte(GreenByte)
-    AssertByte(BlueByte)
-
-    local CommandFmt = FukenEsc .. '48;2;%d;%d;%dm'
-    local Command = string.format(CommandFmt, RedByte, GreenByte, BlueByte)
-
-    return Command
+    return AnsiTerm.BackgroundSetColor(RedByte, GreenByte, BlueByte)
   end
 
 local GetCommand_Reset =
   function()
-    local Command = FukenEsc .. '0m'
-
-    return Command
+    return AnsiTerm.ResetAttributes
   end
 
 local PpmImageCodec = request('!.concepts.Netpbm.Interface')
