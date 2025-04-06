@@ -2,16 +2,16 @@
 
 --[[
   Author: Martin Eden
-  License: LGPL v3
-  Last mod.: 2024-12-12
+  Last mod.: 2025-04-06
 ]]
 
 -- Config:
 local Config =
   {
     ImageWidth = tonumber(arg[1]) or 60,
-    ImageHeight = tonumber(arg[2]) or 30,
-    RandomSeed = tonumber(arg[3]) or math.randomseed(),
+    ImageHeight = tonumber(arg[2]) or 10,
+    ColorFormat = arg[3] or 'Rgb',
+    RandomSeed = tonumber(arg[4]) or math.randomseed(),
     OutputFileName = 'Plasm_1d.ppm',
   }
 
@@ -26,44 +26,57 @@ require('workshop')
 -- Imports:
 local t2s = request('!.table.as_string')
 local PlasmGenerator = request('LinearPlasmGenerator.Interface')
-local DuplicateImageLine = request('!.concepts.Image.Matrix.CreateFromLine')
+local CreateImageFromLine = request('!.concepts.Image.Matrix.CreateFromLine')
 local OutputFile = request('!.concepts.StreamIo.Output.File')
-local PpmCodec = request('!.concepts.Ppm.Interface')
+local PpmCodec = request('!.concepts.Netpbm.Interface')
 
 io.write('Config = ', t2s(Config))
 
 math.randomseed(Config.RandomSeed, Config.RandomSeed)
 
-PlasmGenerator.ImageLength = Config.ImageWidth
-PlasmGenerator.OnRing = true
-PlasmGenerator.Scale = 2.4
+local Image
+do
+  PlasmGenerator.ImageLength = Config.ImageWidth
+  PlasmGenerator.Scale = 2.4e-1*4
 
--- Custom [0.0, 1.0] -> [0.0, 1.0] mapping function
-PlasmGenerator.TransformDistance =
-  function(self, Distance)
-    -- return Distance ^ 1.43
-    -- [[
-    local Angle_Deg = Distance * 180 - 90
-    local Angle_Rad = math.rad(Angle_Deg)
-    return (math.sin(Angle_Rad) + 1) / 2
-    --]]
-  end
+  PlasmGenerator.ColorFormat = Config.ColorFormat
 
-PlasmGenerator:Run()
+  -- Custom [0.0, 1.0] -> [0.0, 1.0] mapping function
+  PlasmGenerator.TransformDistance =
+    function(self, Distance)
+      local Result
+      -- Result = Distance
+      -- Result = Distance ^ 1.43
+      -- [[
+      local Angle_Deg = Distance * 180 - 90
+      local Angle_Rad = math.rad(Angle_Deg)
+      Result = (math.sin(Angle_Rad) + 1) / 2
+      --]]
 
-local PlasmImage = new(PlasmGenerator.Image)
+      assert(Result >= 0)
 
-local ResultImage = DuplicateImageLine(Config.ImageHeight, PlasmImage)
+      return Result
+    end
 
-OutputFile:Open(Config.OutputFileName)
+  PlasmGenerator:Run()
 
-PpmCodec.Output = OutputFile
-PpmCodec:Save(ResultImage)
+  local ImageLine = PlasmGenerator.Line
 
-OutputFile:Close()
+  Image = CreateImageFromLine(ImageLine, Config.ImageHeight)
+end
+
+do
+  OutputFile:Open(Config.OutputFileName)
+
+  PpmCodec.Output = OutputFile
+  PpmCodec.Settings.ColorFormat = Config.ColorFormat
+  PpmCodec:Save(Image)
+
+  OutputFile:Close()
+end
 
 --[[
-  2024-11-06
-  2024-11-24
-  2024-11-25
+  2024-11 # # #
+  2025-04-05
+  2025-04-06
 ]]
