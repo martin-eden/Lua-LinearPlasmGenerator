@@ -1,4 +1,5 @@
 local Modules = {
+  workshop = '',
   ['workshop.base'] = [=[
 --[[
   Lua base libraries extension. Used almost in any piece of my code.
@@ -282,32 +283,17 @@ return Denormalize
   2024-11-24
 ]]
 ]=],
-  ['workshop.concepts.Image.Color.Interface'] = [=[
--- Color structure for images
+  ['workshop.concepts.Image.Color.Grayscale'] = [=[
+-- Grayscale color structure
+
+-- Last mod.: 2025-03-28
+
+-- Damn, that was worth a standalone file!
+
+return { 0.0 }
 
 --[[
-  Color is a list of color components.
-
-  Color component is float in [0.0, 1.0].
-]]
-
--- Last mod.: 2024-11-25
-
--- Imports:
-local NameList = request('!.concepts.List.AddNames')
-
-local Color = { 0.0, 0.0, 0.0 }
-
-local Names = { 'Red', 'Green', 'Blue' }
-
-NameList(Color, Names)
-
--- Exports:
-return Color
-
---[[
-  2024-11-24
-  2024-11-25
+  2025-03-28
 ]]
 ]=],
   ['workshop.concepts.Image.Color.MapTo'] = [=[
@@ -359,20 +345,116 @@ return Normalize
   2024-11-24
 ]]
 ]=],
+  ['workshop.concepts.Image.Color.Randomize'] = [=[
+-- Randomize components of given color
+
+-- Last mod.: 2025-04-04
+
+-- Imports:
+local ApplyFunc = request('!.concepts.List.ApplyFunc')
+
+-- Return number from unit interval [0.0, 1.0]
+local GetRandom_Ui =
+  function()
+    return math.random()
+  end
+
+--[[
+  Randomize color components
+
+  Modifies given table!
+
+  Fact that it returns table is just convenience feature.
+]]
+local Randomize =
+  function(Color)
+    ApplyFunc(GetRandom_Ui, Color)
+
+    return Color
+  end
+
+-- Exports:
+return Randomize
+
+--[[
+  2025-04-04
+]]
+]=],
+  ['workshop.concepts.Image.Color.Rgb'] = [=[
+-- RGB color structure for images
+
+-- Last mod.: 2025-04-05
+
+--[[
+  For our processing "color" is just a fixed-length list of
+  something. Type of "something" depends what functions you will
+  call for that list.
+
+  Okay, for RGB it's list of three floats.
+  For grayscale it's list of one float.
+  For bitmap it's list of one integer.
+
+  (Text above is not a contract, just trying describe structure
+  in simple terms.)
+]]
+
+-- Imports:
+local NameList = request('!.concepts.List.AddNames')
+
+local Color = { 0.0, 0.0, 0.0 }
+
+local Names = { 'Red', 'Green', 'Blue' }
+
+-- Annotate component indices (sets metatable)
+NameList(Color, Names)
+
+-- Exports:
+return Color
+
+--[[
+  2024-11-24
+  2024-11-25
+  2025-03-28
+]]
+]=],
+  ['workshop.concepts.Image.Color.SpawnColor'] = [=[
+-- Create color record, depending of color format
+
+-- Last mod.: 2025-03-31
+
+-- Imports:
+local RgbColor = request('Rgb')
+local GsColor = request('Grayscale')
+
+-- Exports:
+return
+  function(ColorType)
+    if (ColorType == 'Rgb') then
+      return new(RgbColor)
+    elseif (ColorType == 'Gs') then
+      return new(GsColor)
+    end
+  end
+
+--[[
+  2025-03-29
+  2025-03-31
+]]
+]=],
   ['workshop.concepts.Image.Matrix.CreateFromLine'] = [=[
 -- Create 2-d image by duplicating line
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2025-04-06
 
 --[[
   Stack line image N times
 ]]
 local StackLineImage =
-  function(NumTimes, LineImage)
+  function(ImageLine, NumTimes)
     local Result = {}
 
     for Index = 1, NumTimes do
-      Result[Index] = new(LineImage)
+      Result[Index] = new(ImageLine)
     end
 
     return Result
@@ -383,6 +465,7 @@ return StackLineImage
 
 --[[
   2024-11-25
+  2025-04-06
 ]]
 ]=],
   ['workshop.concepts.Indent.Interface'] = [=[
@@ -536,42 +619,37 @@ return
   2024-10-24
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_IsToPpm.CompilePixel'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_IsToNif.CompilePixel'] = [=[
 -- Compile pixel to string
 
--- Last mod.: 2024-11-03
+-- Last mod.: 2025-03-28
 
 -- Exports:
 return
   function(self, PixelIs)
-    return
-      string.format(
-        self.PixelFmt,
-        PixelIs[1],
-        PixelIs[2],
-        PixelIs[3]
-      )
+    return table.concat(PixelIs, ' ')
   end
 
 --[[
   2024-11-03
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_IsToPpm.Interface'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_IsToNif.Interface'] = [=[
 -- Serialize to pixmap format
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2025-03-29
 
 -- Exports:
 return
   {
-    -- Setup: Output stream
-    Output = request('!.concepts.StreamIo.Output'),
-
-    -- Main: Serialize anonymous structure to pixmap
-    Run = request('Run'),
-
     -- [Config]
+
+    -- File format
+    Settings = request('^.Settings.Interface'),
+
+    -- Output stream
+    Output = request('!.concepts.StreamIo.Output'),
 
     -- Format label format (lol)
     LabelFmt = '%s  # Plain portable pixmap',
@@ -588,13 +666,12 @@ return
     -- Number of serialized pixels per line of output
     NumColumns = 4,
 
-    -- Pixel serialization format
-    PixelFmt = '%3s %3s %3s',
+    -- [Main]
+
+    -- Serialize anonymous structure to pixmap
+    Run = request('Run'),
 
     -- [Internal]
-
-    -- .ppm format constants
-    Constants = request('^.Constants.Interface'),
 
     -- Write label
     WriteLabel = request('WriteLabel'),
@@ -615,17 +692,19 @@ return
 --[[
   2024-11-02
   2024-11-03
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_IsToPpm.Run'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_IsToNif.Run'] = [=[
 -- Convert from .is to .ppm
 
--- Last mod.: 2024-12-12
+-- Last mod.: 2025-03-28
 
 --[[
-  Gets list of strings/lists structure. Writes in .ppm format.
+  Receives list of strings/lists structure.
+  Writes to <.Output> in .ppm format.
 
-  When failed returns false.
+  Contract obliges us to return true at end.
 ]]
 local SerializePpm =
   function(self, PpmIs)
@@ -646,7 +725,7 @@ return SerializePpm
   2024-12-12
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_IsToPpm.WriteData'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_IsToNif.WriteData'] = [=[
 -- Write pixels to output. We're doing some formatting
 
 -- Last mod.: 2024-11-06
@@ -698,17 +777,19 @@ return
   2024-11-03
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_IsToPpm.WriteHeader'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_IsToNif.WriteHeader'] = [=[
 -- Write header to output
 
--- Last mod.: 2024-12-12
+-- Last mod.: 2025-03-29
+
+-- Imports:
+local MaxColorValue = request('^.Settings.Interface').MaxColorValue
 
 -- Exports
 return
   function(self, DataIs)
     local Height = #DataIs
     local Width = #DataIs[1]
-    local MaxColorValue = self.Constants.MaxColorValue
 
     self:WriteLine(
       string.format(
@@ -723,27 +804,31 @@ return
 --[[
   2024-11-03
   2024-12-12
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_IsToPpm.WriteLabel'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_IsToNif.WriteLabel'] = [=[
 -- Write label string to output
 
--- Last mod.: 2024-12-12
+-- Last mod.: 2025-03-29
 
 -- Exports:
 return
   function(self)
+    local FormatLabel = self.Settings:GetFormatLabel()
+
     self:WriteLine(
-      string.format(self.LabelFmt, self.Constants.FormatLabel)
+      string.format(self.LabelFmt, FormatLabel)
     )
   end
 
 --[[
   2024-11-02
   2024-12-12
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_IsToPpm.WriteLine'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_IsToNif.WriteLine'] = [=[
 -- Write string as line to output
 
 -- Last mod.: 2024-11-02
@@ -759,50 +844,57 @@ return
   2024-11-02
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_LuaToIs.CompileColor'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_LuaToIs.CompileColor'] = [=[
 -- Anonymize color to list
 
--- Last mod.: 2024-12-12
+-- Last mod.: 2025-03-29
 
 -- Imports:
+local SpawnColor = request('!.concepts.Image.Color.SpawnColor')
 local DenormalizeColor = request('!.concepts.Image.Color.Denormalize')
+local PatchTable = request('!.table.patch')
 
 -- Exports:
 return
   function(self, Color)
-    DenormalizeColor(Color)
+    local ByteColor = SpawnColor(self.Settings.ColorFormat)
+    PatchTable(ByteColor, Color)
 
-    local RedIs = self:CompileColorComponent(Color[1])
-    local GreenIs = self:CompileColorComponent(Color[2])
-    local BlueIs = self:CompileColorComponent(Color[3])
+    DenormalizeColor(ByteColor)
 
-    if not (RedIs and GreenIs and BlueIs) then
-      return
+    local Result = {}
+
+    for _, Component in ipairs(ByteColor) do
+      local SerializedComponent = self:CompileColorComponent(Component)
+
+      if not SerializedComponent then
+        return
+      end
+
+      table.insert(Result, SerializedComponent)
     end
 
-    return { RedIs, GreenIs, BlueIs }
+    return Result
   end
 
 --[[
-  2024-11-03
-  2024-11-25
-  2021-12-12
+  2024-11 # #
+  2024-12-12
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_LuaToIs.CompileColorComponent'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_LuaToIs.CompileColorComponent'] = [=[
 -- Serialize color component integer
 
--- Last mod.: 2024-11-04
+-- Last mod.: 2025-03-29
 
 -- Imports:
+local MaxColorValue = request('^.Settings.Interface').MaxColorValue
 local NumberInRange = request('!.number.in_range')
 
 -- Exports:
 return
   function(self, ColorComponent)
-    local MaxColorValue = self.Constants.MaxColorValue
-    local FormatStr = self.ColorComponentFmt
-
     if not is_integer(ColorComponent) then
       return
     end
@@ -811,19 +903,59 @@ return
       return
     end
 
-    return string.format(FormatStr, ColorComponent)
+    return string.format(self.ColorComponentFmt, ColorComponent)
   end
 
 --[[
   2024-11-03
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_LuaToIs.CompileImage'] = [=[
--- Compile pixels to anonymous structure
+  ['workshop.concepts.Netpbm.Compiler_LuaToIs.Interface'] = [=[
+-- Compile named Lua table to anonymous structure (list of strings/lists)
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2025-03-31
 
 -- Exports:
+return
+  {
+    -- [Config]
+
+    -- Image format settings
+    Settings = request('^.Settings.Interface'),
+
+    -- Color component serialization format
+    ColorComponentFmt = '%03d',
+
+    -- [Main]
+
+    -- Convert table with image to anonymous tree
+    Run = request('Run'),
+
+    -- [Internals]
+
+    -- Compile color
+    CompileColor = request('CompileColor'),
+
+    -- Serialize color component
+    CompileColorComponent = request('CompileColorComponent'),
+  }
+
+--[[
+  2024-11 # # # #
+  2024-12 #
+  2025-03-28
+  2025-03-31
+]]
+]=],
+  ['workshop.concepts.Netpbm.Compiler_LuaToIs.Run'] = [=[
+-- Anonymize parsed .ppm
+
+-- Last mod.: 2025-03-29
+
+--[[
+  Compile Lua table with pixels to anonymous structure
+]]
 return
   function(self, Image)
     local MatrixIs = {}
@@ -832,10 +964,6 @@ return
       MatrixIs[RowIndex] = {}
 
       for ColumnIndex, Color in ipairs(Row) do
-        if not Color then
-          return
-        end
-
         local ValueIs = self:CompileColor(Color)
 
         if not ValueIs then
@@ -850,159 +978,50 @@ return
   end
 
 --[[
-  2024-11-03
-  2024-11-25
-]]
-]=],
-  ['workshop.concepts.Ppm.Compiler_LuaToIs.Interface'] = [=[
--- Compile named Lua table to anonymous structure (list of strings/lists)
-
--- Last mod.: 2024-12-12
-
--- Exports:
-return
-  {
-    -- Main: Convert table with .ppm to anonymous tree
-    Run = request('Run'),
-
-    -- [Config]
-
-    -- Color component serialization format
-    ColorComponentFmt = '%03d',
-
-    -- [Internal]
-
-    -- Format constants
-    Constants = request('^.Constants.Interface'),
-
-    -- Compile image data
-    CompileImage = request('CompileImage'),
-
-    -- Compile color
-    CompileColor = request('CompileColor'),
-
-    -- Serialize color component
-    CompileColorComponent = request('CompileColorComponent'),
-  }
-
---[[
-  2024-11-03
-  2024-11-04
-  2024-11-06
-  2024-11-25
+  2024-11 # # #
   2024-12-12
+  2025-03-29
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Compiler_LuaToIs.Run'] = [=[
--- Anonymize parsed .ppm
-
--- Last mod.: 2024-12-12
-
---[[
-  Compile Lua table to anonymous structure
-]]
-local Compile =
-  function(self, Image)
-    return self:CompileImage(Image)
-  end
-
--- Exports:
-return Compile
-
---[[
-  2024-11-03
-  2024-11-06
-  2024-12-12
-]]
-]=],
-  ['workshop.concepts.Ppm.Constants.Interface'] = [=[
--- Format constants
-
--- Last mod.: 2024-11-02
-
--- Exports:
-return
-  {
-    -- Format label
-    FormatLabel = 'P3',
-
-    --[[
-       Max color component value
-
-       Despite that format allows any integer in [1, 65535]
-       we're fixing it to constant.
-
-       Color component value should be between 0 and this number.
-    ]]
-    MaxColorValue = 255,
-
-    -- Check that given string is our format label
-    IsValidLabel = request('IsValidLabel'),
-  }
-
---[[
-  2024-11-02
-]]
-]=],
-  ['workshop.concepts.Ppm.Constants.IsValidLabel'] = [=[
--- Check that given string is our format label
-
--- Last mod.: 2024-11-02
-
--- Exports:
-return
-  function(self, Label)
-    return (Label == self.FormatLabel)
-  end
-
---[[
-  2024-11-02
-]]
-]=],
-  ['workshop.concepts.Ppm.Interface'] = [=[
+  ['workshop.concepts.Netpbm.Interface'] = [=[
 -- Encode/decode .ppm file to Lua table
 
--- Last mod.: 2024-11-06
+-- Last mod.: 2025-03-29
 
 -- Exports:
 return
   {
     -- [Config]
+    Settings = request('Settings.Interface'),
 
-    -- Input stream
     Input = request('!.concepts.StreamIo.Input'),
-
-    -- Output stream
     Output = request('!.concepts.StreamIo.Output'),
 
     -- [Main]
-
-    -- Load image from stream
     Load = request('Load'),
-
-    -- Save image to stream
     Save = request('Save'),
   }
 
 --[[
   2024-11-04
+  2025-03-29
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Load'] = [=[
+  ['workshop.concepts.Netpbm.Load'] = [=[
 -- Load image from stream
 
--- Last mod.: 2024-11-23
+-- Last mod.: 2025-03-30
 
 -- Imports:
-local Parser_PpmToIs = request('Parser_PpmToIs.Interface')
+local Parser_NifToIs = request('Parser_NifToIs.Interface')
 local Parser_IsToLua = request('Parser_IsToLua.Interface')
 
 -- Exports:
 return
   function(self)
-    Parser_PpmToIs.Input = self.Input
+    Parser_NifToIs.Input = self.Input
 
-    local ImageIs = Parser_PpmToIs:Run()
+    local ImageIs = Parser_NifToIs:Run()
 
     if not ImageIs then
       return
@@ -1021,21 +1040,21 @@ return
   2024-11-04
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_IsToLua.Interface'] = [=[
+  ['workshop.concepts.Netpbm.Parser_IsToLua.Interface'] = [=[
 -- Parse from anonymous structure to custom Lua format
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2025-03-31
 
 -- Exports:
 return
   {
+    -- [Config]
+    Settings = request('^.Settings.Interface'),
+
     -- [Main] Parse pixmap structure to Lua table in custom format
     Run = request('Run'),
 
     -- [Internal]
-
-    -- .ppm format constants
-    Constants = request('^.Constants.Interface'),
 
     -- Parse raw pixels data
     ParsePixels = request('ParsePixels'),
@@ -1048,17 +1067,19 @@ return
   }
 
 --[[
-  2024-11-02
-  2024-11-06
+  2024-11 # #
+  2025-03-28
+  2025-03-31
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_IsToLua.ParseColorComponent'] = [=[
+  ['workshop.concepts.Netpbm.Parser_IsToLua.ParseColorComponent'] = [=[
 -- Parse color component value
 
--- Last mod.: 2024-11-06
+-- Last mod.: 2025-03-29
 
 -- Imports:
 local NumberInRange = request('!.number.in_range')
+local MaxColorValue = request('^.Settings.Interface').MaxColorValue
 
 --[[
   Parse color component value from string to integer.
@@ -1069,8 +1090,6 @@ local NumberInRange = request('!.number.in_range')
 ]]
 local ParseColorComponent =
   function(self, Value)
-    local MaxColorValue = self.Constants.MaxColorValue
-
     Value = tonumber(Value)
 
     if not is_integer(Value) then
@@ -1089,35 +1108,41 @@ return ParseColorComponent
 
 --[[
   2024-11-03
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_IsToLua.ParsePixel'] = [==[
+  ['workshop.concepts.Netpbm.Parser_IsToLua.ParsePixel'] = [==[
 -- Parse raw pixel data
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2025-03-31
 
 -- Imports:
-local BaseColor = request('!.concepts.Image.Color.Interface')
+local SpawnColor = request('!.concepts.Image.Color.SpawnColor')
 local NormalizeColor = request('!.concepts.Image.Color.Normalize')
 
 --[=[
-  Parses raw pixel data to annotated list
+  Parses raw pixel data to color record:
 
-  { '0', '128', '255' } -> { 0, 128, 255 --[[ aka .Red, .Green, .Blue ]] }
+    { '0', '128', '255' } -> { 0.0, 0.5, 1.0 }
+
+  Note that number of color components is not fixed to three.
+  We should work fine with one-component (grayscale) colors.
 
   In case of problems returns nil.
 ]=]
 local ParsePixel =
   function(self, PixelIs)
-    local Red = self:ParseColorComponent(PixelIs[1])
-    local Green = self:ParseColorComponent(PixelIs[2])
-    local Blue = self:ParseColorComponent(PixelIs[3])
+    local Color = SpawnColor(self.Settings.ColorFormat)
 
-    if not (Red and Green and Blue) then
-      return
+    for Index, ValueIs in ipairs(PixelIs) do
+      local ComponentValue = self:ParseColorComponent(ValueIs)
+
+      if not ComponentValue then
+        return
+      end
+
+      Color[Index] = ComponentValue
     end
-
-    local Color = new(BaseColor, { Red, Green, Blue })
 
     NormalizeColor(Color)
 
@@ -1130,9 +1155,10 @@ return ParsePixel
 --[[
   2024-11-03
   2024-11-25
+  2025-03-28
 ]]
 ]==],
-  ['workshop.concepts.Ppm.Parser_IsToLua.ParsePixels'] = [==[
+  ['workshop.concepts.Netpbm.Parser_IsToLua.ParsePixels'] = [==[
 -- Parse raw pixels data
 
 -- Last mod.: 2024-11-25
@@ -1173,10 +1199,10 @@ return ParsePixels
   2024-11-25
 ]]
 ]==],
-  ['workshop.concepts.Ppm.Parser_IsToLua.Run'] = [=[
+  ['workshop.concepts.Netpbm.Parser_IsToLua.Run'] = [=[
 -- Gets structure as grouped strings. Returns table with nice names
 
--- Last mod.: 2024-11-25
+-- Last mod.: 2025-03-31
 
 --[[
   Custom Lua format
@@ -1186,6 +1212,7 @@ return ParsePixels
     1x2 bitmap
 
     {
+      'P3',
       { '1', '2', '255' },
       {
         { { '0', '128', '255' } },
@@ -1198,51 +1225,257 @@ return ParsePixels
     {
       { { 0, 128, 255 } },
       { { 128, 255, 0 } },
+      Height = 2,
+      Width = 1,
+      Format = 'Rgb',
     }
 
   On fail it returns nil.
 
   Some fail conditions:
 
-    * Holes at Input[2] data matrix.
-    * If there is color component value that is not in range [0, 255]
+    * Holes in data matrix
+    * Some color component value is not in range [0, 255]
 ]]
 
 -- Exports:
 return
   function(self, DataIs)
-    local PixelsIs = DataIs[2]
+    local ImageIs = DataIs[3]
 
-    local Pixels = self:ParsePixels(PixelsIs)
+    local Image = self:ParsePixels(ImageIs)
 
-    if not Pixels then
+    if not Image then
       return
     end
 
-    return Pixels
+    Image.Height = #Image
+    Image.Width = #Image[1]
+
+    do
+      local FormatLabel = DataIs[1]
+      self.Settings:SetFormatLabel(FormatLabel)
+      Image.Format = self.Settings.ColorFormat
+    end
+
+    return Image
   end
 
 --[[
-  2024-11-02
-  2024-11-03
-  2024-11-25
+  2024-11 # # #
+  2025-03-31
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_PpmToIs.GetChunk'] = [=[
--- Load given amount of items
+  ['workshop.concepts.Netpbm.Parser_NifToIs.GetPixels'] = [=[
+-- Load raw pixels data from .ppm stream
 
--- Last mod.: 2024-11-03
+-- Last mod.: 2025-03-28
 
 --[[
-  Get specified amount of items from input stream.
+  Load pixels data from .ppm stream
 
-  Return list of items. If failed, return nil.
+  Requires parsed header to know dimensions of data.
+  Data values are not processed. But grouped.
+
+  In case there are not enough data returns nil.
+  Else returns matrix of (height x width x num_color_components).
+]]
+local GetPixels =
+  function(self, ImageSettings)
+    local Data = {}
+
+    for _ = 1, ImageSettings.Height do
+      local Row = {}
+
+      for _ = 1, ImageSettings.Width do
+        local Color = self.ItemGetter:GetChunk(ImageSettings.NumColorComponents)
+
+        if not Color then
+          return
+        end
+
+        table.insert(Row, Color)
+      end
+
+      table.insert(Data, Row)
+    end
+
+    return Data
+  end
+
+-- Exports:
+return GetPixels
+
+--[[
+  2024-11-03
+  2025-03-28
+]]
+]=],
+  ['workshop.concepts.Netpbm.Parser_NifToIs.Interface'] = [=[
+-- Load pixmap to itness format (list with strings and lists)
+
+-- Last mod.: 2025-03-31
+
+-- Exports:
+return
+  {
+    -- [Config]
+
+    -- File format
+    Settings = request('^.Settings.Interface'),
+
+    -- Input stream
+    Input = request('!.concepts.StreamIo.Input'),
+
+    -- [Main]
+    -- Load pixmap to itness format
+    Run = request('Run'),
+
+    -- [Internal]
+    ItemGetter = request('ItemGetter.Interface'),
+    ParseHeader = request('ParseHeader'),
+    GetPixels = request('GetPixels'),
+  }
+
+--[[
+  2024-11 # # #
+  2025-03-28
+  2025-03-31
+]]
+]=],
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.CharacterClassifier.Init'] = [=[
+-- Fill module internals
+
+-- Last mod.: 2025-03-28
+
+-- Imports:
+local ToList = request('!.table.to_list')
+local MapValues = request('!.table.map_values')
+
+-- Exports:
+return
+  function(self)
+    self.SpaceMap = MapValues(ToList(self.Space))
+    self.LineCommentStartMap = MapValues(ToList(self.LineCommentStart))
+    self.LineCommentEndMap = MapValues(ToList(self.LineCommentEnd))
+  end
+
+--[[
+  2025-03-28
+]]
+]=],
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.CharacterClassifier.Interface'] = [=[
+-- Character classifier interface/config
+
+--[[
+  Author: Martin Eden
+  Last mod.: 2025-03-28
+]]
+
+local Space = { ' ', '\t' }
+local Newline = { '\n', '\r' }
+
+return
+  {
+    -- [Main]
+
+    Init = request('Init'),
+
+    IsSpace = request('IsSpace'),
+    IsLineCommentStart = request('IsLineCommentStart'),
+    IsLineCommentEnd = request('IsLineCommentEnd'),
+    IsDelimiter = request('IsDelimiter'),
+
+    -- [Config]
+    Space = { Space, Newline },
+    LineCommentStart = { '#' },
+    LineCommentEnd = Newline,
+
+    -- [Internals]
+    SpaceMap = {},
+    LineCommentStartMap = {},
+    LineCommentEndMap = {},
+  }
+
+--[[
+  2025-03-28
+]]
+]=],
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.CharacterClassifier.IsDelimiter'] = [=[
+-- Character is "normal delimiter" or comment start?
+
+-- Last mod.: 2025-03-28
+
+return
+  function(self, Char)
+    return
+      self:IsSpace(Char) or
+      self:IsLineCommentStart(Char)
+  end
+
+--[[
+  2025-03-28
+]]
+]=],
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.CharacterClassifier.IsLineCommentEnd'] = [=[
+-- Character is line comment end?
+
+-- Last mod.: 2025-03-28
+
+return
+  function(self, Char)
+    return self.LineCommentEndMap[Char]
+  end
+
+--[[
+  2025-03-28
+]]
+]=],
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.CharacterClassifier.IsLineCommentStart'] = [=[
+-- Character is line comment start?
+
+-- Last mod.: 2025-03-28
+
+return
+  function(self, Char)
+    return self.LineCommentStartMap[Char]
+  end
+
+--[[
+  2025-03-28
+]]
+]=],
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.CharacterClassifier.IsSpace'] = [=[
+-- Character is space/tab?
+
+-- Last mod.: 2025-03-28
+
+return
+  function(self, Char)
+    return self.SpaceMap[Char]
+  end
+
+--[[
+  2025-03-28
+]]
+]=],
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.GetChunk'] = [=[
+-- Load given amount of items
+
+-- Last mod.: 2025-03-28
+
+--[[
+  Get specified amount of items from input stream
+
+  Return list of items.
+
+  If failed, return nil.
 ]]
 local GetChunk =
   function(self, NumItems)
     local Result = {}
 
-    for i = 1, NumItems do
+    for _ = 1, NumItems do
       local Item = self:GetNextItem()
 
       if not Item then
@@ -1262,7 +1495,7 @@ return GetChunk
   2024-11-03
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_PpmToIs.GetNextCharacter'] = [=[
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.GetNextCharacter'] = [=[
 -- Get next character
 
 -- Last mod.: 2024-11-02
@@ -1302,44 +1535,15 @@ return GetNextCharacter
   2024-11-02
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_PpmToIs.GetNextItem'] = [=[
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.GetNextItem'] = [=[
 -- Get next item
 
--- Last mod.: 2024-11-04
-
-local IsSpace =
-  function(Char)
-    return
-      (Char == ' ') or
-      (Char == '\t')
-  end
-
-local IsNewline =
-  function(Char)
-    return
-      (Char == '\n') or
-      (Char == '\r')
-  end
-
-local IsDelimiter =
-  function(Char)
-    return IsSpace(Char) or IsNewline(Char)
-  end
-
--- Read until end of stream or until end of line
-local SkipLine =
-  function(self)
-    while self:GetNextCharacter() do
-      if IsNewline(self.NextCharacter) then
-        break
-      end
-    end
-  end
+-- Last mod.: 2025-03-28
 
 --[[
   Get next item
 
-  Skips line comments.
+  Skips item delimiters and line comments.
 
     > P3
     > 1920 1080 # Width Height
@@ -1349,46 +1553,38 @@ local SkipLine =
 ]]
 local GetNextItem =
   function(self)
-    local Char
+    local CharWizard = self.CharacterClassifier
 
-    ::Redo::
-
-    -- Space eating cycle
+    -- Advance read pointer till essential character
     while self:GetNextCharacter() do
-      Char = self.NextCharacter
+      local Char = self.NextCharacter
 
-      if not IsDelimiter(Char) then
+      if CharWizard:IsDelimiter(Char) then
+        if CharWizard:IsLineCommentStart(Char) then
+          self:SkipLineEnd()
+        end
+      else
+        break
+      end
+    end
+
+    -- Add characters to result item
+    local Result = self.NextCharacter
+
+    while self:GetNextCharacter() do
+      local Char = self.NextCharacter
+
+      if CharWizard:IsDelimiter(Char) then
+        if CharWizard:IsLineCommentStart(Char) then
+          self:SkipLineEnd()
+        end
         break
       end
 
-      PrevChar = Char
+      Result = Result .. Char
     end
 
-    -- Check for line comment
-    do
-      local CommentChar = '#'
-
-      if (Char == CommentChar) then
-        -- Skip until end of line. Damned comment
-        SkipLine(self)
-        goto Redo
-      end
-    end
-
-    -- Catenate characters to <Term>
-    local Term = Char
-
-    while self:GetNextCharacter() do
-      Char = self.NextCharacter
-
-      if IsDelimiter(Char) then
-        break
-      end
-
-      Term = Term .. Char
-    end
-
-    return Term
+    return Result
   end
 
 -- Exports:
@@ -1396,100 +1592,78 @@ return GetNextItem
 
 --[[
   2024-11-02
+  2025-03-27
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_PpmToIs.GetPixels'] = [=[
--- Load raw pixels data from .ppm stream
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.Init'] = [=[
+-- Setup item getter
 
--- Last mod.: 2024-11-03
+-- Last mod.: 2025-03-29
 
---[[
-  Load pixels data from .ppm stream
+local LineComment = request('^.^.Settings.Interface').LineCommentChar
 
-  Requires parsed header to know dimensions of data.
-  Data values are not processed. But grouped.
-
-  In case there are not enough data, return nil.
-  Else return matrix of (height x width x 3).
-]]
-local GetPixels =
-  function(self, Header)
-    local Data = {}
-
-    for Row = 1, Header.Height do
-      local RowData = {}
-
-      for Column = 1, Header.Width do
-        local NumColorComponents = 3
-        local Color = self:GetChunk(NumColorComponents)
-
-        if not Color then
-          return
-        end
-
-        RowData[Column] = Color
-      end
-
-      Data[Row] = RowData
-    end
-
-    return Data
+return
+  function(self)
+    self.CharacterClassifier.LineCommentStart = { LineComment }
+    self.CharacterClassifier:Init()
   end
 
--- Exports:
-return GetPixels
-
 --[[
-  2024-11-03
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_PpmToIs.Interface'] = [=[
--- Load pixmap to itness format (list with strings and lists)
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.Interface'] = [=[
+-- .ppm text stream item getter
 
--- Last mod.: 2024-11-06
+--[[
+  Author: Martin Eden
+  Last mod.: 2025-03-28
+]]
 
--- Exports:
 return
   {
     -- [Config]
+    Input = {},
 
-    -- Input stream
-    Input = request('!.concepts.StreamIo.Input'),
-
-    -- [Main] Load pixmap to itness format
-    Run = request('Run'),
-
-    -- [Internal]
-
-    -- .ppm format constants
-    Constants = request('^.Constants.Interface'),
-
-    -- Next character. Used by GetNextCharacter()
-    NextCharacter = nil,
-
-    -- Get next character
-    GetNextCharacter = request('GetNextCharacter'),
-
-    -- Get next item
+    Init = request('Init'),
     GetNextItem = request('GetNextItem'),
-
-    -- Get chunk of items
     GetChunk = request('GetChunk'),
 
-    -- Parse header from raw data
-    ParseHeader = request('ParseHeader'),
-
-    -- Load raw pixels data from input stream
-    GetPixels = request('GetPixels'),
+    -- [Internals]
+    NextCharacter = '',
+    CharacterClassifier = request('CharacterClassifier.Interface'),
+    GetNextCharacter = request('GetNextCharacter'),
+    SkipLineEnd = request('SkipLineEnd'),
   }
 
 --[[
-  2024-11-02
-  2024-11-03
-  2024-11-06
+  2025-03-28
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_PpmToIs.ParseHeader'] = [=[
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ItemGetter.SkipLineEnd'] = [=[
+-- Move read pointer to next line
+
+-- Last mod.: 2025-03-28
+
+-- Used to skip line comment contents
+
+return
+  function(self)
+    local CharWizard = self.CharacterClassifier
+
+    while self:GetNextCharacter() do
+      if CharWizard:IsLineCommentEnd(self.NextCharacter) then
+        break
+      end
+    end
+  end
+
+--[[
+  2025-03-28
+]]
+]=],
+  ['workshop.concepts.Netpbm.Parser_NifToIs.ParseHeader'] = [=[
 -- Parse header from list to table
 
 -- Last mod.: 2024-11-25
@@ -1526,10 +1700,10 @@ return ParseHeader
   2024-11-25
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Parser_PpmToIs.Run'] = [=[
+  ['workshop.concepts.Netpbm.Parser_NifToIs.Run'] = [=[
 -- Read in .ppm format. Return structure in itness format (grouped strings)
 
--- Last mod.: 2024-11-06
+-- Last mod.: 2025-03-31
 
 --[[
   Normally it returns Lua list with strings and lists.
@@ -1538,8 +1712,7 @@ return ParseHeader
 
   Fail conditions:
 
-    * There are less values than required for (width x height x 3)
-      matrix
+    * Not enough data
 
   .ppm format allows line comments "# blah blah\n". They are lost.
 
@@ -1552,6 +1725,7 @@ return ParseHeader
     is loaded as
 
       {
+        'P3',
         { '1', '2', '255' },
         {
           { { '0', '128', '255' } },
@@ -1560,6 +1734,12 @@ return ParseHeader
       }
 ]]
 
+local Init =
+  function(self)
+    self.ItemGetter.Input = self.Input
+    self.ItemGetter:Init()
+  end
+
 --[[
   Convert from pixmap to itness
 
@@ -1567,67 +1747,98 @@ return ParseHeader
 ]]
 local Parse =
   function(self)
-    local Label = self:GetNextItem()
+    local LabelIs = self.ItemGetter:GetNextItem()
 
-    if not self.Constants:IsValidLabel(Label) then
+    if not self.Settings:SetFormatLabel(LabelIs) then
       return
     end
 
     local NumItemsInHeader = 3
-    local HeaderIs = self:GetChunk(NumItemsInHeader)
+    local HeaderIs = self.ItemGetter:GetChunk(NumItemsInHeader)
 
     if not HeaderIs then
       return
     end
 
-    local Header = self:ParseHeader(HeaderIs)
+    local ImageSettings = self:ParseHeader(HeaderIs)
 
-    if not Header then
+    if not ImageSettings then
       return
     end
 
-    local PixelsIs = self:GetPixels(Header)
+    local NumColorComponents
+    do
+      local ColorFormat = self.Settings.ColorFormat
+      if
+        (ColorFormat == 'Bw') or
+        (ColorFormat == 'Gs')
+      then
+        NumColorComponents = 1
+      elseif (ColorFormat == 'Rgb') then
+        NumColorComponents = 3
+      end
+      assert(NumColorComponents)
+    end
+    ImageSettings.NumColorComponents = NumColorComponents
+
+    local PixelsIs = self:GetPixels(ImageSettings)
 
     if not PixelsIs then
       return
     end
 
-    return { HeaderIs, PixelsIs }
+    return { LabelIs, HeaderIs, PixelsIs }
   end
 
 -- Exports:
-return Parse
+return
+  function(self)
+    Init(self)
+
+    return Parse(self)
+  end
 
 --[[
   2024-11-02
   2024-11-03
   2024-11-05
+  2025-03-28
+  2025-03-31
 ]]
 ]=],
-  ['workshop.concepts.Ppm.Save'] = [=[
+  ['workshop.concepts.Netpbm.Save'] = [=[
 -- Save image to stream
 
--- Last mod.: 2024-12-12
+-- Last mod.: 2025-03-29
 
 -- Imports:
 local Compiler_LuaToIs = request('Compiler_LuaToIs.Interface')
-local Compiler_IsToPpm = request('Compiler_IsToPpm.Interface')
+local Compiler_IsToNif = request('Compiler_IsToNif.Interface')
 
 -- Exports:
 return
   function(self, Image)
-    local ImageIs = Compiler_LuaToIs:Run(Image)
+    local ImageIs
 
-    if not ImageIs then
-      return false
+    do
+      Compiler_LuaToIs.Settings = self.Settings
+
+      ImageIs = Compiler_LuaToIs:Run(Image)
+
+      if not ImageIs then
+        return false
+      end
     end
 
-    Compiler_IsToPpm.Output = self.Output
+    do
+      Compiler_IsToNif.Settings = self.Settings
+      Compiler_IsToNif.Output = self.Output
 
-    local IsOkay = Compiler_IsToPpm:Run(ImageIs)
+      local IsOkay = Compiler_IsToNif:Run(ImageIs)
 
-    if not IsOkay then
-      return false
+      if not IsOkay then
+        return false
+      end
     end
 
     return true
@@ -1635,6 +1846,141 @@ return
 
 --[[
   2024-11-04
+  2025-03-29
+]]
+]=],
+  ['workshop.concepts.Netpbm.Settings.GetFormatLabel'] = [=[
+-- Return format label string for current settings
+
+-- Last mod.: 2025-03-29
+
+-- Exports:
+return
+  function(self)
+    return self.FormatLabels[self.DataEncoding][self.ColorFormat]
+  end
+
+--[[
+  2025-03-29
+]]
+]=],
+  ['workshop.concepts.Netpbm.Settings.Interface'] = [=[
+-- Format constants and settings
+
+-- Last mod.: 2025-03-30
+
+--[[
+  That's programmatic description "netpbm" family of formats.
+]]
+
+--[[
+  "netpbm" family of formats
+
+    https://netpbm.sourceforge.net/doc/#formats
+
+  Well, there are fucking lot of annoying words but at core it's
+  simple.
+
+  We're dealing with images. Image is rectangular 2-d matrix of colors.
+  So any image will have height and width.
+
+  Color can be black/white (one bit), grayscale (1 to 16 bits) and
+  RGB (24 bits).
+
+  That color data can be encoded as plain text or as binary integers.
+
+  That makes six variations.
+
+  Also, one more format to rule them all "pam" - (p)ortable (a)rbitrary
+  (m)ap. Late child to embrace them all and add "transparency"
+  color component support.
+
+    ( "pam" (P7) is not supported in this code. No practical need. )
+]]
+
+-- Color and data formats
+local FormatLabels =
+  {
+    Text =
+      {
+        Bw = 'P1',
+        Gs = 'P2',
+        Rgb = 'P3',
+      },
+    Binary =
+      {
+        Bw = 'P4',
+        Gs = 'P5',
+        Rgb = 'P6',
+      },
+  }
+
+-- Exports:
+return
+  {
+    -- ( Map of available values
+    FormatLabels = FormatLabels,
+    -- )
+
+    -- ( Actual location on that map
+    ColorFormat = 'Rgb',
+    DataEncoding = 'Text',
+    GetFormatLabel = request('GetFormatLabel'),
+    SetFormatLabel = request('SetFormatLabel'),
+    -- )
+
+    -- Line comment character
+    LineCommentChar = '#',
+
+    --[[
+       Max color component value
+
+       Format allows any integer in [1, 65535]. But we're fixing it
+       to 255 because it's the only value we need.
+    ]]
+    MaxColorValue = 255,
+  }
+
+--[[
+  2024-11-02
+  2025-03-29
+  2025-03-30
+]]
+]=],
+  ['workshop.concepts.Netpbm.Settings.SetFormatLabel'] = [=[
+-- Set format label in settings
+
+-- Last mod.: 2025-03-30
+
+-- Imports:
+local GetPathsToValues = request('!.table.get_paths')
+
+--[[
+  Set "data encoding" and "color format" fields in settings
+  depending of "format label".
+]]
+local SetFormatLabel =
+  function(self, Label)
+    local Paths = GetPathsToValues(self.FormatLabels)
+
+    local LabelPath = Paths[Label]
+
+    if not LabelPath then
+      -- Unknown format label
+      return
+    end
+
+    self.ColorFormat = LabelPath[1][2]
+    self.DataEncoding = LabelPath[1][1]
+
+    return true
+  end
+
+-- Exports:
+return SetFormatLabel
+
+--[[
+  2025-03-30
 ]]
 ]=],
   ['workshop.concepts.StreamIo.Input'] = [=[
@@ -1687,88 +2033,6 @@ return
 --[[
   2024-07-19
   2024-07-24
-]]
-]=],
-  ['workshop.concepts.StreamIo.Input.File'] = [=[
--- Reads strings from file. Implements [Input]
-
--- Last mod.: 2024-11-11
-
-local OpenForReading = request('!.file_system.file.OpenForReading')
-local CloseFileFunc = request('!.file_system.file.Close')
-
--- Contract: Read string from file
-local Read =
-  function(self, NumBytes)
-    assert_integer(NumBytes)
-    assert(NumBytes >= 0)
-
-    local Data = ''
-    local IsComplete = false
-
-    Data = self.FileHandle:read(NumBytes)
-
-    local IsEof = is_nil(Data)
-
-    -- No End-of-File state in [Input]
-    if IsEof then
-      Data = ''
-    end
-
-    IsComplete = (#Data == NumBytes)
-
-    return Data, IsComplete
-  end
-
--- Intestines: Open file for reading
-local OpenFile =
-  function(self, FileName)
-    local FileHandle = OpenForReading(FileName)
-
-    if is_nil(FileHandle) then
-      return false
-    end
-
-    self.FileHandle = FileHandle
-
-    return true
-  end
-
--- Intestines: close file
-local CloseFile =
-  function(self)
-    return (CloseFileFunc(self.FileHandle) == true)
-  end
-
-local Interface =
-  {
-    -- [New]
-
-    -- Open file by name
-    Open = OpenFile,
-
-    -- Close file
-    Close = CloseFile,
-
-    -- [Main]: Read bytes
-    Read = Read,
-
-    -- Intestines
-    FileHandle = 0,
-  }
-
--- Close file at garbage collection
-setmetatable(Interface, { __gc = function(self) self:Close() end } )
-
--- Exports:
-return Interface
-
---[[
-  2024-07-19
-  2024-07-24
-  2024-08-05
-  2024-08-09
-  2024-11-11
 ]]
 ]=],
   ['workshop.concepts.StreamIo.Output'] = [=[
@@ -2638,26 +2902,6 @@ return
   2024-08-09
 ]]
 ]=],
-  ['workshop.file_system.file.OpenForReading'] = [=[
--- Open file for reading
-
-return
-  function(FileName)
-    assert_string(FileName)
-
-    local File = io.open(FileName, 'rb')
-
-    if is_nil(File) then
-      return
-    end
-
-    return File
-  end
-
---[[
-  2024-08-09
-]]
-]=],
   ['workshop.file_system.file.OpenForWriting'] = [=[
 -- Open file for writing
 
@@ -3017,18 +3261,6 @@ return
     line_with_text:init(self.Indent:GetString())
   end
 ]],
-  ['workshop.number.assert_byte'] = [=[
---[[
-  Assert that passed value is integer in byte range.
-]]
-
-local is_byte = request('is_byte')
-
-return
-  function(v)
-    assert(is_byte(v))
-  end
-]=],
   ['workshop.number.constrain'] = [=[
 -- Constrain given number between min and max values
 
@@ -3088,16 +3320,35 @@ return FitToRange
 ]]
 ]=],
   ['workshop.number.float.get_middle'] = [=[
--- Return float between two floats
+-- Return average of float arguments
+
+-- Last mod.: 2025-04-04
+
+--[[
+  Calculate average of given float-numbers
+
+  Accepts sequence of arguments. No type checks.
+]]
+local FloatMid =
+  function(...)
+    local NumArgs = select('#', ...)
+
+    local Sum = 0.0
+
+    for Index = 1, NumArgs do
+      local Arg = select(Index, ...)
+      Sum = Sum + Arg
+    end
+
+    return Sum / NumArgs
+  end
 
 -- Exports:
-return
-  function(Left, Right)
-    return (Left + Right) / 2
-  end
+return FloatMid
 
 --[[
   2024-11-30
+  2025-04-04
 ]]
 ]=],
   ['workshop.number.float.symmetric_random'] = [=[
@@ -3122,27 +3373,19 @@ return
     return (num >= min) and (num <= max)
   end
 ]=],
-  ['workshop.number.integer.get_gap'] = [=[
--- Return gap between two integers. (Gap between 4 and 5 is 0.)
+  ['workshop.number.integer.get_distance'] = [=[
+-- Return distance between two integer numbers
 
---[[
-  We can generalize this function as
+-- Last mod.: 2025-04-02
 
-  (Left, Right, UnitWidth)
-    return ((Right - Left) - UnitWidth)
-
-  and UnitWidth is 1 for integers and 0 for floats.
-
-  But I just need it for integers.
-]]
-
+-- Exports:
 return
   function(Left, Right)
-    return ((Right - Left) - 1)
+    return (Right - Left)
   end
 
 --[[
-  2024-09
+  2025-04-02
 ]]
 ]=],
   ['workshop.number.integer.get_middle'] = [=[
@@ -3160,36 +3403,6 @@ return GetMiddle
 
 --[[
   2024-11-30
-]]
-]=],
-  ['workshop.number.is_byte'] = [=[
--- Check that given argument is integer in byte range
-
---[[
-  Input
-
-    Value: any - any value
-
-  Output
-
-    Yes: bool - value is integer in byte range
-]]
-
-return
-  function(Value)
-    if not is_integer(Value) then
-      return false
-    end
-
-    -- Masking integer with low byte changes nothing for byte range
-    local Result = (Value == (Value & 0xFF))
-
-    return Result
-  end
-
---[[
-  2020-08-09
-  2024-09-30
 ]]
 ]=],
   ['workshop.number.is_natural'] = [=[
@@ -3618,6 +3831,87 @@ return
     return result
   end
 ]],
+  ['workshop.table.get_paths'] = [=[
+-- Get a list of paths to each value in tree
+
+--[[
+  Author: Martin Eden
+  Last mod.: 2025-03-31
+]]
+
+-- Imports:
+local IsTree = request('!.table.is_tree')
+
+--[[
+  Get a list of paths to each value in tree
+
+  Example:
+
+    Suppose you have matrix
+
+      ( ( A B ) ( C A ) )
+
+    You can represent it as
+
+      { { 'A', 'B' }, { 'C', 'A' } }
+
+    Now you want know what paths reach value "A":
+
+      () ->
+        {
+          A = { { 1, 1 }, { 2, 2 } },
+          B = { { 1, 2 } },
+          C = { { 2, 1 } },
+        }
+]]
+
+--[[
+  Core function. Receives current node, path to that node and
+  list of paths which is result.
+]]
+local ProcessNode
+ProcessNode =
+  function(Node, Path, Paths)
+    if not is_table(Node) then
+      if not Paths[Node] then
+        Paths[Node] = {}
+      end
+      table.insert(Paths[Node], new(Path))
+
+      return
+    end
+
+    for Key, Value in pairs(Node) do
+      table.insert(Path, Key)
+      ProcessNode(Value, Path, Paths)
+      table.remove(Path)
+    end
+  end
+
+--[[
+  Root function. Checks that structure has no cycles and calls
+  core function.
+]]
+local GetPaths =
+  function(Tree)
+    if not IsTree(Tree) then
+      return
+    end
+
+    local Result = {}
+
+    ProcessNode(Tree, {}, Result)
+
+    return Result
+  end
+
+-- Exports:
+return GetPaths
+
+--[[
+  2025-03-30
+]]
+]=],
   ['workshop.table.hard_patch'] = [=[
 -- Shortcut to overwrite values in destination table according to patch
 
@@ -3638,28 +3932,113 @@ return HardPatch
   2024-11-11
 ]]
 ]=],
-  ['workshop.table.invert'] = [[
-return
-  function(t)
-    assert_table(t)
-    local result = {}
-    for k, v in pairs(t) do
-      result[v] = k
+  ['workshop.table.invert'] = [=[
+-- Invert table
+
+-- Last mod.: 2025-03-30
+
+--[[
+  Invert table - for simple substitution tables
+
+  Examples:
+
+    { 'value_a', 'value_b' } -> { value_a = 1, value_b = 2 }
+
+  See also
+
+    * [get_paths] to get a list of paths to values in tree
+]]
+local InvertTable =
+  function(Table)
+    assert_table(Table)
+
+    local Result = {}
+
+    for Key, Value in pairs(Table) do
+      Result[Value] = Key
     end
-    return result
+
+    return Result
   end
-]],
+
+
+-- Exports:
+return InvertTable
+
+--[[
+  2019-12-01
+  2025-03-30
+]]
+]=],
+  ['workshop.table.is_tree'] = [=[
+-- Function to check that table is tree
+
+--[[
+  Author: Martin Eden
+  Last mod.: 2025-03-30
+]]
+
+--[[
+  Check that table is tree, i.e. each node can be reached only one way
+
+  Examples:
+
+    t = { a = { 'B' } } -- OK
+
+    t = { a = { 'B' } }
+    t.b = t.a -- FAIL, DAG, not tree
+
+    t = { a = { 'B' } }
+    t.b = t -- FAIL, graph with cycle
+]]
+local IsTree =
+  function(Tree)
+    assert_table(Tree)
+
+    local VisitedNodes = {}
+    local Result = true
+
+    local ProcessNode
+    ProcessNode =
+      function(Node)
+        if not is_table(Node) then
+          return
+        end
+
+        if VisitedNodes[Node] then
+          Result = false
+          return
+        end
+
+        VisitedNodes[Node] = true
+
+        for _, Value in pairs(Node) do
+          ProcessNode(Value)
+        end
+      end
+
+    ProcessNode(Tree)
+
+    return Result
+  end
+
+-- Exports:
+return IsTree
+
+--[[
+  2025-03-30
+]]
+]=],
   ['workshop.table.map_values'] = [=[
 -- Map table values to keys
 
 --[[
   Useful when you want to check presence and have list.
 
-    { 'A', 'A', a = 'A', b = 'A'} ->
-    { [1] = true, [2] = true, A = true }
+    { 'A', _ = 'a'} -> { A = true, a = true }
 ]]
 
--- Last mod.: 2024-10-20
+-- Last mod.: 2025-03-28
 
 return
   function(t)
@@ -3677,6 +4056,7 @@ return
 --[[
   2016-09-06
   2024-10-20
+  2025-03-28
 ]]
 ]=],
   ['workshop.table.merge'] = [=[
@@ -3826,13 +4206,19 @@ return
   ['workshop.table.patch'] = [=[
 -- Apply patch to table
 
--- Last mod.: 2024-11-11
+-- Last mod.: 2025-03-29
 
 --[[
+  In-place table modification
+
   Basically it means that we're writing every entity from patch table to
   destination table.
 
-  If no key in destination table, we'll explode.
+  Function returns nothing but may explode.
+
+  If there is no key in destination table, we'll explode:
+
+    ( { a = 'a'}, { a = 'a', b = 'b' } ) -> BOOM
 
   Additional third parameter means that we're not overwriting
   entity in destination table if it's value type is same as
@@ -3859,12 +4245,21 @@ return
 
       ({ b = { bb = 'BB' } }, { b = { bb = '_BB' } }, false) ->
       { b = { bb = '_BB' } }
+
+  See also:
+
+    table.merge
 ]]
 
 local Patch
 Patch =
   function(MainTable, PatchTable, IfDifferentTypesOnly)
     assert_table(MainTable)
+
+    if is_nil(PatchTable) then
+      return
+    end
+
     assert_table(PatchTable)
 
     for PatchKey, PatchValue in pairs(PatchTable) do
@@ -3892,7 +4287,7 @@ Patch =
       if DoPatch then
         -- Recursive call when we're writing table to table
         if is_table(MainValue) and is_table(PatchValue) then
-          Patch(MainValue, PatchValue)
+          Patch(MainValue, PatchValue, IfDifferentTypesOnly)
         -- Else just overwrite value
         else
           MainTable[PatchKey] = PatchValue
@@ -3908,6 +4303,57 @@ return Patch
   2016-09
   2024-02
   2024-11
+  2025-03-29
+]]
+]=],
+  ['workshop.table.to_list'] = [=[
+-- Convert table to flat list of values
+
+--[[
+  Table may have folded tables.
+
+    YES: t = { 'a', b = 'b', { c = 'a' } }
+      => { 'a', 'b', 'a' }
+
+  Table should not have cycles.
+
+    NO: t = {} t.t = t
+
+  Only values of table table key-values are processed.
+
+    NO LUCK: t = { [{ 'a' }] = {} }
+]]
+
+-- Last mod.: 2024-10-24
+
+local OrderedPairs = request('ordered_pass')
+
+local ToList
+ToList =
+  function(Node, Result)
+    assert_table(Node)
+
+    for Key, Value in OrderedPairs(Node) do
+      if is_table(Value) then
+        ToList(Value, Result)
+      else
+        table.insert(Result, Value)
+      end
+    end
+  end
+
+local ToListWrapper =
+  function(Node)
+    local Result = {}
+    ToList(Node, Result)
+    return Result
+  end
+
+-- Exports:
+return ToListWrapper
+
+--[[
+  2024-10-20
 ]]
 ]=],
 }
