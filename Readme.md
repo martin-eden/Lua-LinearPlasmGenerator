@@ -1,6 +1,6 @@
 ## What
 
-(2024-11, 2024-12)
+(2024-11, 2024-12, 2025-04)
 
 "Plasm" gradient filling for 1-d images.
 
@@ -21,25 +21,35 @@ Also it will print something like
 
 ```
 Config = {
-  ImageHeight = 30,
+  ColorFormat = 'Rgb',
+  ImageHeight = 10,
   ImageWidth = 60,
   OutputFileName = 'Plasm_1d.ppm',
-  RandomSeed = 1732580666,
+  RandomSeed = 1743896375,
 }
 ```
 
-To specify image width (900) and height (150) use
+### Arguments
+
+All values from `Config` except `OutputFileName` can be passed
+as positional parameters. Sequence is
+
+`ImageWidth ImageHeight ColorFormat RandomSeed`
+
+For example to specify `ImageWidth` (900) and `ImageHeight` (150) call
 ```
 $ lua Plasm_1d_ppm.lua 900 150
 ```
 
-You can specify random seed (int64 range, 1234 here) as third parameter.
-That's why we're printing config. With fixed random seed same image will
-be generated every time
+Third optional argument is `ColorFormat`. `Rgb` for RGB and `Gs`
+for grayscale. (Grayscale is more sexy to my taste as you can directly
+treat values as relief height.)
 
-```
-$ lua Plasm_1d_ppm.lua 900 150 1234
-```
+Fourth optional argument is `RandomSeed` (int64). With same random
+seed, image width and color format you will get same result. That's
+why we are printing config. You can store just several bytes to
+recreate image.
+
 
 ### Advanced usage
 
@@ -59,9 +69,9 @@ potential.
 Instead of spending words, I left code in [LinearPlasmGenerator](LinearPlasmGenerator/).
 
 
-### wtf is .ppm format
+### Wtf is .ppm format?!
 
-Heh, Plain pixmap. It's opened fine by xViewer in Linux Mint. GIMP opens
+Huh, Plain pixmap. It's opening fine by xViewer in Linux Mint. GIMP opens
 it fine too.
 
 If you bother to install `netpbm` package you can convert `.ppm` to `.png`
@@ -87,7 +97,7 @@ one site tries to sell. That's even worse than PowerPoint presentations.
 
 ## Requirements
 
-  * Lua 5.4
+  * Lua 5.3
 
 It does not use any OS-specific functions so may run even under Windows!
 
