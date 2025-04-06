@@ -5,11 +5,13 @@
   Last mod.: 2025-03-31
 ]]
 
--- [[ Dev
+--[[ Dev
 package.path = package.path .. ';' .. '../../?.lua'
 require('workshop.base')
 --]]
--- require('workshop')
+-- [[ Use
+require('workshop')
+--]]
 
 local Config =
   {
