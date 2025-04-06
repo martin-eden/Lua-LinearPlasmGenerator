@@ -1,5 +1,4 @@
 local Modules = {
-  workshop = '',
   ['workshop.base'] = [=[
 --[[
   Lua base libraries extension. Used almost in any piece of my code.
@@ -2035,6 +2034,88 @@ return
   2024-07-24
 ]]
 ]=],
+  ['workshop.concepts.StreamIo.Input.File'] = [=[
+-- Reads strings from file. Implements [Input]
+
+-- Last mod.: 2024-11-11
+
+local OpenForReading = request('!.file_system.file.OpenForReading')
+local CloseFileFunc = request('!.file_system.file.Close')
+
+-- Contract: Read string from file
+local Read =
+  function(self, NumBytes)
+    assert_integer(NumBytes)
+    assert(NumBytes >= 0)
+
+    local Data = ''
+    local IsComplete = false
+
+    Data = self.FileHandle:read(NumBytes)
+
+    local IsEof = is_nil(Data)
+
+    -- No End-of-File state in [Input]
+    if IsEof then
+      Data = ''
+    end
+
+    IsComplete = (#Data == NumBytes)
+
+    return Data, IsComplete
+  end
+
+-- Intestines: Open file for reading
+local OpenFile =
+  function(self, FileName)
+    local FileHandle = OpenForReading(FileName)
+
+    if is_nil(FileHandle) then
+      return false
+    end
+
+    self.FileHandle = FileHandle
+
+    return true
+  end
+
+-- Intestines: close file
+local CloseFile =
+  function(self)
+    return (CloseFileFunc(self.FileHandle) == true)
+  end
+
+local Interface =
+  {
+    -- [New]
+
+    -- Open file by name
+    Open = OpenFile,
+
+    -- Close file
+    Close = CloseFile,
+
+    -- [Main]: Read bytes
+    Read = Read,
+
+    -- Intestines
+    FileHandle = 0,
+  }
+
+-- Close file at garbage collection
+setmetatable(Interface, { __gc = function(self) self:Close() end } )
+
+-- Exports:
+return Interface
+
+--[[
+  2024-07-19
+  2024-07-24
+  2024-08-05
+  2024-08-09
+  2024-11-11
+]]
+]=],
   ['workshop.concepts.StreamIo.Output'] = [=[
 -- Writer interface
 
@@ -2902,6 +2983,26 @@ return
   2024-08-09
 ]]
 ]=],
+  ['workshop.file_system.file.OpenForReading'] = [=[
+-- Open file for reading
+
+return
+  function(FileName)
+    assert_string(FileName)
+
+    local File = io.open(FileName, 'rb')
+
+    if is_nil(File) then
+      return
+    end
+
+    return File
+  end
+
+--[[
+  2024-08-09
+]]
+]=],
   ['workshop.file_system.file.OpenForWriting'] = [=[
 -- Open file for writing
 
@@ -2920,6 +3021,55 @@ return
 
 --[[
   2024-08-09
+]]
+]=],
+  ['workshop.frontend.AnsiTerm.Interface'] = [=[
+-- Interface to ANSI text terminal
+
+-- Last mod.: 2025-04-06
+
+local CSI = '\027['
+
+return
+  {
+    ClrEOL = CSI .. 'K',
+    ScreenClear = CSI .. '2J',
+    ScreenClearToStart = CSI .. '1J',
+    ScreenClearToEnd = CSI .. 'J',
+    CursorHide = CSI .. '?25l',
+    CursorShow = CSI .. '?25h',
+    CursorGotoXY =
+      function(x, y)
+        return (CSI .. '%d;%dH'):format(y, x)
+      end,
+    GetScreenSize =
+      function()
+        io.write(CSI .. '18t')
+        local Response = ''
+        while true do
+          local c = io.read(1)
+          Response = Response .. c
+          if (c == 't') then
+            break
+          end
+        end
+        local Height, Width = Response:match('\027%[%d+;(%d+);(%d+)t')
+        Height = tonumber(Height)
+        Width = tonumber(Width)
+        return Width, Height
+      end,
+    BackgroundSetColor =
+      function(Red, Green, Blue)
+        return (CSI .. '48;2;%d;%d;%dm'):format(Red, Green, Blue)
+      end,
+    ResetAttributes = CSI .. '0m',
+  }
+
+--[[
+  2021-11-28
+  2021-12-07
+  2022-01-31
+  2025-04-06
 ]]
 ]=],
   ['workshop.lua.data_mathtypes'] = [=[
