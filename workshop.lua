@@ -618,86 +618,85 @@ return
   2024-10-24
 ]]
 ]=],
-  ['workshop.concepts.Netpbm.Compiler_IsToNif.CompilePixel'] = [=[
+  ['workshop.concepts.Netpbm.Compiler_IsToNif.CompileColor'] = [=[
 -- Compile pixel to string
 
--- Last mod.: 2025-03-28
+-- Last mod.: 2025-04-09
+
+-- Imports:
+local ListToString = request('!.concepts.List.ToString')
 
 -- Exports:
 return
-  function(self, PixelIs)
-    return table.concat(PixelIs, ' ')
+  function(self, ColorIs)
+    return ListToString(ColorIs, ' ')
   end
 
 --[[
   2024-11-03
   2025-03-28
+  2025-04-09
 ]]
 ]=],
   ['workshop.concepts.Netpbm.Compiler_IsToNif.Interface'] = [=[
 -- Serialize to pixmap format
 
--- Last mod.: 2025-03-29
+-- Last mod.: 2025-04-09
 
 -- Exports:
 return
   {
     -- [Config]
-
-    -- File format
-    Settings = request('^.Settings.Interface'),
-
-    -- Output stream
     Output = request('!.concepts.StreamIo.Output'),
 
-    -- Format label format (lol)
-    LabelFmt = '%s  # Plain portable pixmap',
-
-    -- Header serialization format
-    HeaderFmt = '%s %s %s  # Width, Height, Max color component value',
-
-    -- Lines (rows) separator
-    LinesDelimiter = '',
-
-    -- Columns (pixels) separator
-    ColumnsDelimiter = '  ',
-
-    -- Number of serialized pixels per line of output
-    NumColumns = 4,
-
     -- [Main]
-
-    -- Serialize anonymous structure to pixmap
     Run = request('Run'),
 
-    -- [Internal]
+    -- [Internals]
+    Settings = request('^.Settings.Interface'),
 
-    -- Write label
-    WriteLabel = request('WriteLabel'),
-
-    -- Write header
-    WriteHeader = request('WriteHeader'),
-
-    -- Write data
-    WriteData = request('WriteData'),
-
-    -- Compile pixel to string
-    CompilePixel = request('CompilePixel'),
-
-    -- Write string as line to output
     WriteLine = request('WriteLine'),
+    WriteHeader = request('WriteHeader'),
+    CompileColor = request('CompileColor'),
+    WriteData = request('WriteData'),
   }
 
 --[[
-  2024-11-02
-  2024-11-03
+  2024-11 # #
   2025-03-28
+  2025-04-09
+]]
+]=],
+  ['workshop.concepts.Netpbm.Compiler_IsToNif.Internals.FormatDescriptions'] = [=[
+-- Return lookup table with human-readable format description
+
+-- Last mod.: 2025-04-09
+
+-- Exports:
+return
+  {
+    Text =
+      {
+        Bw = 'Bitmap, text format',
+        Gs = 'Grayscale, text format',
+        Rgb = 'Color, text format',
+      },
+    Binary =
+      {
+        Bw = 'Bitmap, binary format',
+        Gs = 'Grayscale, binary format',
+        Rgb = 'Color, binary format',
+      },
+  }
+
+--[[
+  2025-04-09
 ]]
 ]=],
   ['workshop.concepts.Netpbm.Compiler_IsToNif.Run'] = [=[
 -- Convert from .is to .ppm
 
--- Last mod.: 2025-03-28
+-- Last mod.: 2025-04-09
 
 --[[
   Receives list of strings/lists structure.
@@ -707,7 +706,6 @@ return
 ]]
 local SerializePpm =
   function(self, PpmIs)
-    self:WriteLabel()
     self:WriteHeader(PpmIs)
     self:WriteData(PpmIs)
 
@@ -718,16 +716,15 @@ local SerializePpm =
 return SerializePpm
 
 --[[
-  2024-11-02
-  2024-11-03
-  2024-11-25
+  2024-11 # # #
   2024-12-12
+  2025-04-09
 ]]
 ]=],
   ['workshop.concepts.Netpbm.Compiler_IsToNif.WriteData'] = [=[
--- Write pixels to output. We're doing some formatting
+-- Write pixels to output
 
--- Last mod.: 2024-11-06
+-- Last mod.: 2025-04-09
 
 -- Imports:
 local ListToString = request('!.concepts.List.ToString')
@@ -735,112 +732,135 @@ local ListToString = request('!.concepts.List.ToString')
 -- Exports:
 return
   function(self, DataIs)
+    local Settings = self.Settings
+
+    assert(Settings.DataEncoding == 'Text')
+
+    local ColorFormat = Settings.ColorFormat
+
+    local NumColorsPerDataLine
+
+    if (ColorFormat == 'Rgb') then
+      NumColorsPerDataLine = 4
+    elseif (ColorFormat == 'Gs') then
+      NumColorsPerDataLine = 12
+    end
+
     local Height = #DataIs
     local Width = #DataIs[1]
 
-    local ChunkSize = self.NumColumns
-    local ColumnsDelim = self.ColumnsDelimiter
-    local LinesDelim = self.LinesDelimiter
+    local ColumnsDelim = '  '
 
     self:WriteLine(LinesDelim)
 
     for Row = 1, Height do
-      local Chunks = {}
+      local Chunk = {}
+
+      self:WriteLine('')
+      self:WriteLine(nil, ('Line %d'):format(Row))
 
       for Column = 1, Width do
-        local PixelIs = DataIs[Row][Column]
-        local PixelStr = self:CompilePixel(PixelIs)
+        local ColorIs = DataIs[Row][Column]
+        local ColorStr = self:CompileColor(ColorIs)
 
-        table.insert(Chunks, PixelStr)
+        table.insert(Chunk, ColorStr)
 
-        if (Column % ChunkSize == 0) then
-          local ChunksStr = ListToString(Chunks, ColumnsDelim)
-          Chunks = {}
+        if (Column % NumColorsPerDataLine == 0) then
+          local ChunksStr = ListToString(Chunk, ColumnsDelim)
+          Chunk = {}
 
           self:WriteLine(ChunksStr)
         end
       end
 
       -- Write remained chunk
-      if (Width % ChunkSize ~= 0) then
-        local ChunksStr = ListToString(Chunks, ColumnsDelim)
+      if (Width % NumColorsPerDataLine ~= 0) then
+        local ChunksStr = ListToString(Chunk, ColumnsDelim)
         self:WriteLine(ChunksStr)
       end
-
-      self:WriteLine(LinesDelim)
     end
   end
 
 --[[
-  2024-11-02
-  2024-11-03
+  2024-11 # #
+  2025-04-09
 ]]
 ]=],
   ['workshop.concepts.Netpbm.Compiler_IsToNif.WriteHeader'] = [=[
 -- Write header to output
 
--- Last mod.: 2025-03-29
+-- Last mod.: 2025-04-09
 
 -- Imports:
-local MaxColorValue = request('^.Settings.Interface').MaxColorValue
-
--- Exports
-return
-  function(self, DataIs)
-    local Height = #DataIs
-    local Width = #DataIs[1]
-
-    self:WriteLine(
-      string.format(
-        self.HeaderFmt,
-        Width,
-        Height,
-        MaxColorValue
-      )
-    )
-  end
-
---[[
-  2024-11-03
-  2024-12-12
-  2025-03-28
-]]
-]=],
-  ['workshop.concepts.Netpbm.Compiler_IsToNif.WriteLabel'] = [=[
--- Write label string to output
-
--- Last mod.: 2025-03-29
+local FormatDescriptions = request('Internals.FormatDescriptions')
 
 -- Exports:
 return
-  function(self)
-    local FormatLabel = self.Settings:GetFormatLabel()
+  function(self, DataIs)
+    local Settings = self.Settings
+    local Data
+    local Comment
 
-    self:WriteLine(
-      string.format(self.LabelFmt, FormatLabel)
-    )
+    do
+      Data = Settings:GetFormatLabel()
+      Comment =
+        FormatDescriptions[Settings.DataEncoding][Settings.ColorFormat]
+
+      self:WriteLine(Data, Comment)
+    end
+
+    do
+      local Height = #DataIs
+      local Width = #DataIs[1]
+      local MaxColorValue = Settings.MaxColorValue
+
+      Data =
+        tostring(Width) .. ' ' ..
+        tostring(Height) .. ' ' ..
+        tostring(MaxColorValue)
+
+      Comment = 'Width, Height, 255'
+
+      self:WriteLine(Data, Comment)
+    end
   end
 
 --[[
-  2024-11-02
+  2024-11 # #
   2024-12-12
   2025-03-28
+  2025-04-09
 ]]
 ]=],
   ['workshop.concepts.Netpbm.Compiler_IsToNif.WriteLine'] = [=[
 -- Write string as line to output
 
--- Last mod.: 2024-11-02
+-- Last mod.: 2025-04-09
 
 -- Exports:
 return
-  function(self, String)
-    self.Output:Write(String)
-    self.Output:Write('\n')
+  function(self, Data, Comment)
+    if Data then
+      self.Output:Write(Data)
+    end
+
+    if Comment then
+      if Data then
+        self.Output:Write('  ')
+      end
+
+      self.Output:Write('# ')
+      self.Output:Write(Comment)
+    end
+
+    if Data or Comment then
+      self.Output:Write('\n')
+    end
   end
 
 --[[
   2024-11-02
+  2025-04-09
 ]]
 ]=],
   ['workshop.concepts.Netpbm.Compiler_LuaToIs.CompileColor'] = [=[
@@ -3469,38 +3489,6 @@ return FitToRange
   2024-11-24
 ]]
 ]=],
-  ['workshop.number.float.get_middle'] = [=[
--- Return average of float arguments
-
--- Last mod.: 2025-04-04
-
---[[
-  Calculate average of given float-numbers
-
-  Accepts sequence of arguments. No type checks.
-]]
-local FloatMid =
-  function(...)
-    local NumArgs = select('#', ...)
-
-    local Sum = 0.0
-
-    for Index = 1, NumArgs do
-      local Arg = select(Index, ...)
-      Sum = Sum + Arg
-    end
-
-    return Sum / NumArgs
-  end
-
--- Exports:
-return FloatMid
-
---[[
-  2024-11-30
-  2025-04-04
-]]
-]=],
   ['workshop.number.float.symmetric_random'] = [=[
 -- Return random value from flat distribution in interval [-1.0, +1.0]
 
@@ -3631,6 +3619,28 @@ return MapNumber
 
 --[[
   2024-11-24
+]]
+]=],
+  ['workshop.number.mix_numbers'] = [=[
+-- Mix two numbers in given proportion
+
+-- Last mod.: 2024-11-10
+
+--[[
+  Example:
+
+    mix(100, 200, 0.8) -> 180
+]]
+local MixNumbers =
+  function(Value_A, Value_B, Part_A)
+    return (Value_A * Part_A + Value_B * (1 - Part_A))
+  end
+
+-- Exports:
+return MixNumbers
+
+--[[
+  2024-11-10
 ]]
 ]=],
   ['workshop.string.content_attributes'] = [=[
