@@ -8,7 +8,7 @@
 -- Config:
 local Config =
   {
-    ImageWidth = tonumber(arg[1]) or 60,
+    ImageWidth = tonumber(arg[1]) or 80,
     ImageHeight = tonumber(arg[2]) or 10,
     ColorFormat = arg[3] or 'Rgb',
     RandomSeed = tonumber(arg[4]) or math.randomseed(),
@@ -34,29 +34,40 @@ io.write('Config = ', t2s(Config))
 
 math.randomseed(Config.RandomSeed, Config.RandomSeed)
 
+local StartColor
+local EndColor
+do
+  if (Config.ColorFormat == 'Rgb') then
+    StartColor = { 0.0, 0.0, 0.0 }
+    EndColor = { 1.0, 1.0, 1.0 }
+  elseif(Config.ColorFormat == 'Gs') then
+    StartColor = { 0.0 }
+    EndColor = { 1.0 }
+  end
+end
+
 local Image
 do
-  PlasmGenerator.ImageLength = Config.ImageWidth
-  PlasmGenerator.Scale = 2.4e-1*4
-
-  PlasmGenerator.ColorFormat = Config.ColorFormat
-
   -- Custom [0.0, 1.0] -> [0.0, 1.0] mapping function
   PlasmGenerator.TransformDistance =
     function(self, Distance)
       local Result
-      -- Result = Distance
-      -- Result = Distance ^ 1.43
-      -- [[
       local Angle_Deg = Distance * 180 - 90
       local Angle_Rad = math.rad(Angle_Deg)
       Result = (math.sin(Angle_Rad) + 1) / 2
-      --]]
 
       assert(Result >= 0)
 
       return Result
     end
+
+  PlasmGenerator.ImageLength = Config.ImageWidth
+  PlasmGenerator.Scale = 3e-0
+
+  PlasmGenerator.ColorFormat = Config.ColorFormat
+
+  PlasmGenerator.StartColor = StartColor
+  PlasmGenerator.EndColor = EndColor
 
   PlasmGenerator:Run()
 
